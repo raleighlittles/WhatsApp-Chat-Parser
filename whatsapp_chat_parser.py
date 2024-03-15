@@ -56,7 +56,15 @@ def get_message_sender_or_receiver(txt_file_line : str) -> str:
 
     return msg_transmitter
 
+def get_message_contents(txt_file_line : str) -> str:
 
+    message_contents_regex = re.compile("(\]).+(:.+)")
+    msg_contents = re.search(message_contents_regex, sanitize_text_line(txt_file_line))
+    pdb.set_trace()
+
+    return msg_contents
+
+    
 
 def convert_whatsapp_chat_to_csv(input_dir : str):
 
@@ -65,26 +73,31 @@ def convert_whatsapp_chat_to_csv(input_dir : str):
 
         with open(chat_history_txt_file, 'r', encoding="utf-8") as chat_history_file_hndl:
 
-            messages = dict()
+            messages = list()
             
             for line_num, line_contents in enumerate(chat_history_file_hndl.readlines()):
 
                 # Line starts with a bracket, it defines the beginning of a new message
                 if line_contents.startswith("["):
 
+                    message = dict()
+
                     print(f"[DEBUG] Parsing line #{line_num}")
 
                     msg_datetime = get_message_datetime(line_contents)
-
                     msg_transmitter = get_message_sender_or_receiver(line_contents)
+                    msg_contents = get_message_contents(line_contents)
 
-                    print(f"[DEBUG] Message datetime: {msg_datetime} | Msg transmitter: {msg_transmitter}")
+                    print(f"[DEBUG] Message datetime: {msg_datetime} | Msg transmitter: {msg_transmitter} | Msg: '{msg_contents}'")
 
-                    messages["time"] = msg_datetime
-                    messages["sender"] = msg_transmitter
+                    message["time"] = msg_datetime
+                    message["sender"] = msg_transmitter
+                    message["contents"] = msg_contents
+                    
 
                 else:
                     # Line doesn't start with a a bracket, it's just a continuation of the previous message
+                    messages[-1]["contents"] += line_contents
 
 
 
