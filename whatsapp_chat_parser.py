@@ -18,7 +18,8 @@ def sanitize_text_line(original_txt_line) -> str:
     The step below accomplishes that filtering
     """
 
-    return original_txt_line.encode("ascii", "ignore").decode().strip()
+    #return original_txt_line.encode("ascii", "ignore").decode().strip()
+    return original_txt_line
 
 
 
@@ -56,13 +57,21 @@ def get_message_sender_or_receiver(txt_file_line : str) -> str:
 
     return msg_transmitter
 
+
+
 def get_message_contents(txt_file_line : str) -> str:
 
     message_contents_regex = re.compile("(\]).+(:.+)")
-    msg_contents = re.search(message_contents_regex, sanitize_text_line(txt_file_line))
-    pdb.set_trace()
+    # 1 to skip the colon included
+    try:
+        msg_contents = re.search(message_contents_regex, sanitize_text_line(txt_file_line))
+    
+    except AttributeError:
+        pdb.set_trace()
+        msg_contents = re.search(message_contents_regex, txt_file_line)
 
-    return msg_contents
+    return msg_contents.group(2)[1:]
+
 
     
 
@@ -88,22 +97,20 @@ def convert_whatsapp_chat_to_csv(input_dir : str):
                     msg_transmitter = get_message_sender_or_receiver(line_contents)
                     msg_contents = get_message_contents(line_contents)
 
-                    print(f"[DEBUG] Message datetime: {msg_datetime} | Msg transmitter: {msg_transmitter} | Msg: '{msg_contents}'")
+                    print(f"[DEBUG] Message datetime: '{msg_datetime}' | Msg transmitter: '{msg_transmitter}' | Msg: '{msg_contents}'")
 
                     message["time"] = msg_datetime
                     message["sender"] = msg_transmitter
                     message["contents"] = msg_contents
+
+                    messages.append(message)
                     
 
                 else:
                     # Line doesn't start with a a bracket, it's just a continuation of the previous message
                     messages[-1]["contents"] += line_contents
 
-
-
-
-
-
+            pdb.set_trace()
 
                 
 
