@@ -59,12 +59,20 @@ def get_message_sender_or_receiver(txt_file_line : str) -> str:
 
 def get_message_contents(txt_file_line : str) -> str:
 
-    message_contents_regex = re.compile("(\]).+(:.+)")
+    # message_contents_regex = re.compile("(\]).+(:.+)")
     # 1 to skip the colon included
 
-    msg_contents = re.search(message_contents_regex, txt_file_line)
+    #msg_contents = re.search(message_contents_regex, txt_file_line)
+
+    msg_contents = txt_file_line.split(":")
     
-    return msg_contents.group(2)[1:]
+    #return msg_contents.group(2)[1:]
+    # Look at how the time is formatted, that contains 2 colons, and the third colon comes at the end of the sender:
+    # Y/M/D H:M:S <Sender>: <Message>
+    # we want everything after "Sender:"
+    msg_contents = "".join(msg_contents[3:])
+    return msg_contents
+
 
 
 def convert_whatsapp_chat_to_csv(input_dir : str, output_csv_file : str):
@@ -124,7 +132,7 @@ def export_messages_to_csv(messages, output_csv_file):
         csv_writer.writerow(["Msg ID", "Timestamp", "Datetime", "Sender", "Contents"])
 
         for msg in messages:
-            csv_writer.writerow([msg["id"], msg["timestamp"], msg["datetime"], msg["contents"]])
+            csv_writer.writerow([msg["id"], msg["timestamp"], msg["datetime"], msg["sender"], msg["contents"]])
 
     
 
