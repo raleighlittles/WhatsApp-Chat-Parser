@@ -2,7 +2,7 @@ import argparse
 import re
 import os
 import datetime
-import pdb
+import csv
 
 WHATSAPP_CHAT_FILE_NAME = "_chat.txt"
 
@@ -19,7 +19,7 @@ def sanitize_text_line(original_txt_line) -> str:
     """
 
     #return original_txt_line.encode("ascii", "ignore").decode().strip()
-    forbidden_unicode_chars = ["\u202a", "\u202c", "\u202e", "\xa0"]
+    forbidden_unicode_chars = ["\u202a", "\u202c", "\u200e", "\xa0"]
 
     regex_expr = "|".join(forbidden_unicode_chars)
 
@@ -50,7 +50,8 @@ def get_message_sender_or_receiver(txt_file_line : str) -> str:
     message_phone_num_regex = re.compile("\](.*)\:")
 
 
-    msg_transmitter = str(re.search(message_phone_num_regex, sanitize_text_line(txt_file_line)).group(1).strip())
+    #msg_transmitter = str(re.search(message_phone_num_regex, sanitize_text_line(txt_file_line)).group(1).strip())
+    msg_transmitter = str(re.search(message_phone_num_regex, txt_file_line).group(1).strip())
 
     return msg_transmitter
 
@@ -66,18 +67,19 @@ def get_message_contents(txt_file_line : str) -> str:
     return msg_contents.group(2)[1:]
 
 
-    
+def convert_whatsapp_chat_to_csv(input_dir : str, output_csv_file : str):
 
-def convert_whatsapp_chat_to_csv(input_dir : str):
+    chat_history_txt_file = os.path.join(input_dir, WHATSAPP_CHAT_FILE_NAME)
 
-    if os.path.exists(input_dir):
-        chat_history_txt_file = os.path.join(input_dir, WHATSAPP_CHAT_FILE_NAME)
+    if os.path.exists(chat_history_txt_file):
 
         with open(chat_history_txt_file, 'r', encoding="utf-8") as chat_history_file_hndl:
 
             messages = list()
             
             for line_num, line_contents in enumerate(chat_history_file_hndl.readlines()):
+
+                line_contents = sanitize_text_line(line_contents)
 
                 # Line starts with a bracket, it defines the beginning of a new message
                 if line_contents.startswith("["):
@@ -92,9 +94,11 @@ def convert_whatsapp_chat_to_csv(input_dir : str):
 
                     #print(f"[DEBUG] Message datetime: '{msg_datetime}' | Msg transmitter: '{msg_transmitter}' | Msg: '{msg_contents}'")
 
-                    message["time"] = msg_datetime
+                    message["timestamp"] = msg_datetime[0]
+                    message["datetime"] = msg_datetime[1]
                     message["sender"] = msg_transmitter
                     message["contents"] = msg_contents
+                    message["id"] = line_num
 
                     messages.append(message)
                     
@@ -104,13 +108,28 @@ def convert_whatsapp_chat_to_csv(input_dir : str):
                     messages[-1]["contents"] += line_contents
 
             print(f"[DEBUG] Finished extracting {len(messages)} messages")
+            export_messages_to_csv(messages, output_csv_file)
 
                 
 
     else:
-        raise Exception(f"Input directory specified by user: '{input_dir}' doesn't exist")
+        raise FileNotFoundError(f"Missing {WHATSAPP_CHAT_FILE_NAME} from input directory")
+        
     
+def export_messages_to_csv(messages, output_csv_file):
+
+    with open(output_csv_file, 'w') as csv_file_hndl:
+        csv_writer = csv.writer(csv_file_hndl)
+        # header
+        csv_writer.writerow(["Msg ID", "Timestamp", "Datetime", "Sender", "Contents"])
+
+        for msg in messages:
+            csv_writer.writerow([msg["id"], msg["timestamp"], msg["datetime"], msg["contents"]])
+
     
+
+
+
 
     
 
@@ -120,6 +139,18 @@ if __name__ == "__main__":
 
     argparse_parser.add_argument("-i", "--input-dir", type=str, help="The directory where the WhatsApp chat backup is located. Must contain a txt file.", required=True)
 
+    argparse_parser.add_argument("-o", "--output-csv-file", type=str, help="The output CSV file to save the parsed messages")
+
     argparse_args = argparse_parser.parse_args()
 
-    convert_whatsapp_chat_to_csv(argparse_args.input_dir)
+    input_dir = argparse_args.input_dir
+
+    if not os.path.exists(input_dir):
+        raise Exception(f"Input directory specified by user: '{input_dir}' doesn't exist")
+    
+    output_csv_file = argparse_args.output_csv_file
+
+    if os.path.exists(output_csv_file):
+        raise FileExistsError(f"Output file '{output_csv_file}' already exists, cannot overwrite")
+
+    convert_whatsapp_chat_to_csv(input_dir, output_csv_file)
